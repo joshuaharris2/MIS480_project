@@ -1,0 +1,140 @@
+---
+title: "mis480_project"
+author: "Joshua Harris"
+date: "2/28/2021"
+output: html_document
+---
+
+## Step 1: Import libraries and dataset
+
+In this section, the RStudio layout is created.  The libraries are installed, the working directory is established, the dataset is read in, and the structure of the dataset is called.   
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(GGally)
+library(pander)
+
+# Set a working directory
+setwd("C:/Users/elksd/Dropbox/My PC (LAPTOP-899T4F9L)/Documents/School Stuff/00 Coding Stuff/R files/practice code/R Markdown")
+
+bank_full<-read.csv("bank-full.csv", header = TRUE)
+
+```
+
+In this section, the data is layout is viewed.  The outcome identifies *chr* variable types but the data will need to be converted to a factor type. That will be done in the next section.
+
+```{r}
+# Structure of data
+str(bank_full)
+
+```
+
+## Step 2: Begin to manipulate the data
+
+This section changes 11 variables to new data types -- factors.  This change will allow for categorical analysis.
+
+```{r}
+# Change int to factor
+bank_full$job<-as.factor(bank_full$job)
+bank_full$marital <-as.factor(bank_full$marital)
+bank_full$education <-as.factor(bank_full$education)
+bank_full$default <-as.factor(bank_full$default)
+bank_full$housing <-as.factor(bank_full$housing)
+bank_full$loan <-as.factor(bank_full$loan)
+bank_full$contact <-as.factor(bank_full$contact)
+bank_full$day<-as.factor(bank_full$day)
+bank_full$month <-as.factor(bank_full$month)
+bank_full$poutcome <-as.factor(bank_full$poutcome)
+bank_full$y <-as.factor(bank_full$y)
+```
+
+The new structure of data is below and a summary is in the second window.  In the summary window, take note of a few items: 
+1. the variables were changed to a factor.  
+2. the summary shows an output for `$ day` that has an abnormally high number of **other** category.
+
+```{r}
+# Structure of data
+str(bank_full)
+
+summary(bank_full)
+```
+
+The `$ day` variable is changed back to an **int** variable type. 
+
+`bank_full$day<-as.integer(bank_full$day)`
+
+
+
+```{r echo=FALSE}
+bank_full$day<-as.integer(bank_full$day)
+
+str(bank_full)
+
+summary(bank_full)
+
+row_count<-nrow(bank_full)
+var_count<-ncol(bank_full)
+
+```
+
+In the window above, it identifies `r row_count` observations and `r var_count` variables.
+
+The next steps will look for any missing data elements.  The outcome reflects no missing data -- the dataset is validated and ready for for further analysis.
+
+```{r}
+# Data validation
+sum(duplicated(bank_full))
+sum(!complete.cases(bank_full))
+```
+
+## Step 3: discecting and visualizing data
+
+What was the outcome of the yes versus no variable?  
+This is a probabliity of outcome -- **88.30%** had **no** as a response while **11.70%** had **yes** as a response.
+
+```{r}
+# Outcome percentage
+
+pander(prop.table(table(bank_full$y)))
+
+
+```
+
+What is the data telling us?  The graph blow shows the yes vs. no breakdown by age.  The graph has some adjustments to better show the data.  The ggplot library offers some options that make some quick and easy visual manipulations into better graphics.
+
+Here the colors are dimmed for better aesthetics.  In addition, the points are spread a apart with the `position_jitter` function. This begins the process of better visualizations on the data.
+
+```{r}
+bank_full %>% 
+  ggplot(aes(x = y, y = age, color = y, alpha = 0.01))+
+  geom_point(position = position_jitter(width = 0.5, height = 0.1))
+```
+
+
+Here I will do some grouping and plotting to look at the outcome.  This graph is plotting education on the x-axis, the age on the y-axis and the color is set to y which is the yes outcome.  This image shows more yeses in the secondary and tertiary columns compared to the primary and unknown.  Also, the unknown category outcome has a high number of nos.  Does this mean avoiding an unknown educational background is important--more analysis is needed.
+
+```{r}
+bank_full %>% 
+  ggplot(aes(x = education, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.4, height = 0.1))
+```
+
+
+This graph is plotting age against job with the y outcome determining the color.  The visualization is interesting.  
+
+First, the retired category is shifted appropriately to later years of life.  
+
+Second, the unknown category again shows high levels of nos -- minimizing the unknown category should be a priority going forward.
+
+Third, students appear to be a small quantity category but it has high levels of yes vs no.
+
+```{r}
+bank_full %>% 
+  ggplot(aes(x=job, y = age, color = y))+
+  geom_point(position = position_jitter(width = 0.4, height = 0.1))+
+  theme(axis.text.x = element_text(angle = 45))
+```
+
+
