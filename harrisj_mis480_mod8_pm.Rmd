@@ -1,41 +1,111 @@
 ---
 title: "mis480_project"
 author: "Joshua Harris"
-date: "2/28/2021"
-output: html_document
+date: "3/7/2021"
+output:
+  word_document: default
+  html_document: default
 ---
 
 ## Step 1: Import libraries and dataset
 
-In this section, the RStudio layout is created.  The libraries are installed, the working directory is established, the dataset is read in, and the structure of the dataset is called.   
+The beginning steps in data analysis is identifying the dataset for the project.  The dataset used today will be the **Bank Direct Marketing: An Application of the CRISP-DM Methodology** -- obtained from UCI Machine Learning Repository.
 
-```{r echo=FALSE, warning=FALSE, message=FALSE}
+Once the file is on the local machine, a few things are done as RStudio is opened.  
+
+First, the RStudio software uses libraries that contain tools for data analysis.  The libraries will be loaded first -- libraries can be added later if it becomes necessary.  
+
+Second, RStudio will need to know where to find and save files.  A working directory is created and this will contain the bank dataset from UCI.  This will also save the R coding as the project grows.
+
+Third, the file is loaded into the RStudio program through the `read.csv` function.  The file is saved as a variable named `bank_full`.
+
+Lastly, two variables are created to document the number of rows and columns in the dataset.  This step is not a requirement however it will allow for dynamic programming later in this presentation.
+
+
+```{r setup, include=TRUE, warning=FALSE, message=FALSE}
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
 library(GGally)
 library(pander)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rminer)
+library(nnet)
+library(caTools)
+library(dummies)
+library(Amelia)
 
 # Set a working directory
-setwd("C:/Users/elksd/Dropbox/My PC (LAPTOP-899T4F9L)/Documents/School Stuff/00 Coding Stuff/R files/practice code/R Markdown")
+setwd("C:/Users/elksd/Dropbox/My PC (LAPTOP-899T4F9L)/Documents/School Stuff/19 MIS 480/MIS480_Portfolio_Project")
 
 bank_full<-read.csv("bank-full.csv", header = TRUE)
 
+row_count<-nrow(bank_full)
+var_count<-ncol(bank_full)
+
 ```
 
-In this section, the data is layout is viewed.  The outcome identifies *chr* variable types but the data will need to be converted to a factor type. That will be done in the next section.
+The code chunk above indicates our commands were successful.  As we move forward, the data will need to presented.  The `str(bank_full)` function will present the structure of the dataset.
 
-```{r}
+The  structure is a `## 'data.frame'` with `r row_count` observations on `r var_count` variables.  The `row_count` and `var_count` variables, from the previous code chunk, was used to dynamically insert the correct numbers.  This is useful when using datasets that may have changing data -- this could come into play later in our analysis when we check for duplicate or missing data.
+
+
+The variable types are listed as either `int` and `chr` (an `int` is an integer and a `chr` is a character.
+
+
+```{r structure_of_data, echo=FALSE}
 # Structure of data
 str(bank_full)
 
 ```
 
+**Variable information:**
+
+1. `age`
+
+2. `job`
+
+3. `marital`
+
+4. `education`
+
+5. `default`: is credit in default?
+
+6. `balance`: avg yearly balance
+
+7. `housing`: has a home loan?
+
+8. `loan`: has a personal loan?
+
+9. `contact`: Cellular, Telephone, Unknown
+
+10. `day`: last contact day of the month
+
+11. `month`: last contact month of the year
+
+12. `duration`: last contact duration, in seconds
+
+13. `campaign`: number of contacts performed during this campaign
+
+14. `pdays`: number of days that passed by after the client was last contacted from a previous campaign, -1 means client was not previously contacted
+
+15. `previous`: number of contacts performed before this campaign and for this client.
+
+16. `poutcome`: outcome of the previous marketing campaign
+
+17. `y`: **OUTPUT VARIABLE** -> has the client purchased a term deposit?
+
+There are several variables categorized as a character but this will not work for our analysis.  As the data analysis moves forward, the **chr** variable types will need to be converted to a factor type.  
+
+***
+
 ## Step 2: Begin to manipulate the data
 
-This section changes 11 variables to new data types -- factors.  This change will allow for categorical analysis.
+This section changes 11 variables to new data types -- factors.  This change will allow for categorical analysis.  This change creates the categories so they can aggregate the data into sum totals.  The code chunk below demonstrates how RStudio will change variable types.
 
-```{r}
+```{r change_int_to_factor}
 # Change int to factor
 bank_full$job<-as.factor(bank_full$job)
 bank_full$marital <-as.factor(bank_full$marital)
@@ -50,75 +120,146 @@ bank_full$poutcome <-as.factor(bank_full$poutcome)
 bank_full$y <-as.factor(bank_full$y)
 ```
 
-The new structure of data is below and a summary is in the second window.  In the summary window, take note of a few items: 
-1. the variables were changed to a factor.  
-2. the summary shows an output for `$ day` that has an abnormally high number of **other** category.
 
-```{r}
+The new structure of data is below and the `as.factor` function performed as expected -- specified `chr` data types are now `Factor` data types.  
+
+
+
+```{r data_structure_check, echo=FALSE}
 # Structure of data
 str(bank_full)
 
-summary(bank_full)
 ```
 
-The `$ day` variable is changed back to an **int** variable type. 
 
-`bank_full$day<-as.integer(bank_full$day)`
+In the summary window below, there are a few items to note.
+
+There are several categories with a high number of **other** -- `job`, `day`, and `month`.  In this situation, `day` will be changed back to an `int` data type but `job` and `month` will stay as a factor.
+
+There are several categories with a high number of **unknown** -- `education`, `contact`, and `poutcome`.  This does not warrant any changes now but it will be useful to be aware of while we continue with the analysis.
+
+
+```{r data_summary_check, echo=FALSE}
+
+summary(bank_full)
+
+
+```
+
+
+The `$ day` variable is changed back to an **int** variable type. The follow code: `bank_full$day<-as.integer(bank_full$day)` is used to change a variable type from factor to an integer.
 
 
 
-```{r echo=FALSE}
+```{r change_factor_to_int, echo=FALSE}
 bank_full$day<-as.integer(bank_full$day)
 
 str(bank_full)
 
-summary(bank_full)
-
-row_count<-nrow(bank_full)
-var_count<-ncol(bank_full)
 
 ```
 
-In the window above, it identifies `r row_count` observations and `r var_count` variables.
 
-The next steps will look for any missing data elements.  The outcome reflects no missing data -- the dataset is validated and ready for for further analysis.
+The next steps will look for any missing or duplicate data elements.  The outcome reflects no missing data -- the dataset is validated and ready for for further analysis.
 
-```{r}
+```{r duplicate_data_check}
 # Data validation
 sum(duplicated(bank_full))
 sum(!complete.cases(bank_full))
 ```
 
-## Step 3: discecting and visualizing data
+***
 
-What was the outcome of the yes versus no variable?  
-This is a probabliity of outcome -- **88.30%** had **no** as a response while **11.70%** had **yes** as a response.
+## Step 3: Disecting and visualizing data
 
-```{r}
+
+```{r age_mean, echo=FALSE}
+age_mean<-round(mean(bank_full$age, digits = 0))
+
+```
+
+The first order of business is learning more about the data.  So far, we have looked at the structure of data and identified the number of rows (`r row_count`) and columns (`r var_count`).  We have identified which data types will be integers and factors and the summary statistics for them.  
+
+The first two graphs shows age information about the client list.  The average age of the client is `r age_mean` -- rounded to the lowest integer.  The box plot graph shows some outliers in the older age group area -- approx. > 70 years old.
+
+```{r histogram_graph, echo=FALSE}
+# Age distribution
+gg <- ggplot(bank_full)
+p1 <- gg + geom_histogram(aes(x=age), color = "black", fill = "white", binwidth = 5)+
+  ggtitle("Age Distibution (red mean line)")+
+  ylab("Count")+
+  xlab("Age")+
+  geom_vline(aes(xintercept = mean(age), color = "red"))+
+  scale_x_continuous(breaks = seq(0,100,5))+
+  theme_bw()+
+  theme(legend.position = "none", 
+        axis.text.x = element_text(size = rel(0.75)))
+
+p2 <- gg + geom_boxplot(aes(x='', y=age))+
+  ggtitle("Age Boxplot")+
+  ylab("Age")+
+  theme_bw()
+
+grid.arrange(p1,p2, ncol = 2)
+
+```
+
+
+The graph on the right-side show a left skewed histogram.  The red line on the graph is indicating the average age of the client.
+
+The box plot, on the left, is a different visual showing the age of the client list.  The box begins with the 1st. quartile, a line marking the average age inside the box, and the box ends at the 3rd quartile.  The dots on the upper limit indicate they are outliers in the dataset.
+
+Below is a table display of the `age` variable summary statistics.  
+
+
+```{r table_age_mean, echo=FALSE}
+
+pander(summary(bank_full$age))
+
+
+```
+
+
+
+Now that the age analysis is done, we can visually see the general age target of the customer -- approx. 25 to 60 years old.  Next, the interest shifts to how many customer said yes or no to a term deposit.
+  
+The  probability outcome:
+
+**5289** clients said yes to a term deposit -- or **11.70%**
+
+**39922** clients said no to a term deposit -- or **88.30%**
+
+The two tables below represent the findings.  
+
+```{r probabilitY_table_y, echo=FALSE}
 # Outcome percentage
 
+pander(table(bank_full$y))
 pander(prop.table(table(bank_full$y)))
 
-
 ```
 
-What is the data telling us?  The graph blow shows the yes vs. no breakdown by age.  The graph has some adjustments to better show the data.  The ggplot library offers some options that make some quick and easy visual manipulations into better graphics.
 
-Here the colors are dimmed for better aesthetics.  In addition, the points are spread a apart with the `position_jitter` function. This begins the process of better visualizations on the data.
+As we move on, we want to see how the "yes" and "no" clients are distributed throughout other categories.  The graph below is used to differentiate the yes/no variable against the age variable.  
 
-```{r}
+The graph has some adjustments to better show the data.  The ggplot library offers some options that make some quick and easy visual manipulations into better graphics.
+
+Here the colors are dimmed for better aesthetics.  In addition, the points are spread a apart with the `position_jitter` function. 
+
+This begins the process of better visualizations on the data.  
+
+The code behind the graph is displayed here to demonstrate how it was built.
+
+```{r graph_y_age}
 bank_full %>% 
   ggplot(aes(x = y, y = age, color = y, alpha = 0.01))+
-  geom_point(position = position_jitter(width = 0.5, height = 0.1))
-```
-
-
-Here I will do some grouping and plotting to look at the outcome.  This graph is plotting education on the x-axis, the age on the y-axis and the color is set to y which is the yes outcome.  This image shows more yeses in the secondary and tertiary columns compared to the primary and unknown.  Also, the unknown category outcome has a high number of nos.  Does this mean avoiding an unknown educational background is important--more analysis is needed.
-
-```{r}
-bank_full %>% 
-  ggplot(aes(x = education, y = age, color=y))+
-  geom_point(position = position_jitter(width = 0.4, height = 0.1))
+  geom_point(position = position_jitter(width = 0.48, height = 0.1))+
+  xlab("Term Deposit Purchased")+
+  ylab("Age of Client")+
+  ggtitle("Y/N breakdown with Age of Client")+
+  theme_bw()+
+  theme(legend.position = "none")
+  
 ```
 
 
@@ -130,11 +271,304 @@ Second, the unknown category again shows high levels of nos -- minimizing the un
 
 Third, students appear to be a small quantity category but it has high levels of yes vs no.
 
-```{r}
+```{r job_graph, echo=FALSE}
 bank_full %>% 
   ggplot(aes(x=job, y = age, color = y))+
   geom_point(position = position_jitter(width = 0.4, height = 0.1))+
+  labs(title = "\nJob breakdown with Age of Client", x = "Job of Client", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()+
   theme(axis.text.x = element_text(angle = 45))
+
 ```
 
+
+Let's look at marital status.
+
+```{r marital_graph, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x=marital, y=age, color = y))+
+  geom_point(position = position_jitter(width = 0.45, height = 0.1))+
+  labs(title = "\nMarital Status breakdown with Age of Client", x = "Marital Status of Client", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+```
+
+
+
+Here I will do some grouping and plotting to look at the outcome.  This graph is plotting education on the x-axis, the age on the y-axis and the color is set to y which is the yes outcome.  
+
+This image shows more yeses in the secondary and tertiary columns compared to the primary and unknown.  Also, the unknown category outcome has a high number of nos.  Does this mean avoiding an unknown educational background is important--more analysis is needed.
+
+```{r graph_education, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = education, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.45, height = 0.1))+
+  labs(title = "\nEducation breakdown with Age of Client", x = "Education of Client", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+  
+```
+
+Default category graph...add more words here regarding the graph or category.
+
+
+
+```{r graph_default, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = default, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.45, height = 0.1))+
+  labs(title = "\nClient in default with Age breakdown", x = "Default Status of Client", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+
+```
+
+
+housing category graph...
+
+```{r graph_housing, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = housing, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.45, height = 0.1))+
+  labs(title = "\nClient with a House Loan by Age breakdown", x = "Client has a home loan", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+
+```
+
+
+loan category graph...
+
+```{r graph_loan, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = loan, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.45, height = 0.1))+
+  labs(title = "\nClient with a Personal Loan by Age breakdown", x = "Client has a personal loan", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+
+```
+
+
+contact category graph
+
+```{r graph_contact, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = contact, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.45, height = 0.1))+
+  labs(title = "\nClient with a Personal Loan by Age breakdown", x = "Client has a personal loan", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+
+
+```
+
+month graph
+
+f
+```{r graph_month, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = month, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.4, height = 0.1))+
+  labs(title = "\nMonth with last contact by Age breakdown", x = "Month with Last Contact", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+
+
+```
+
+
+poutcome graph
+
+```{r graph_campaign, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = poutcome, y = age, color=y))+
+  geom_point(position = position_jitter(width = 0.4, height = 0.1))+
+  labs(title = "\nOutcome of previous campaign by Age breakdown", x = "Outcome of previous campaign", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+```
+
+
+How does this look?
+
+```{r graph_duration, echo=FALSE}
+bank_full %>% 
+  ggplot(aes(x = age, y = duration, color=y))+
+  geom_point(position = position_jitter(width = 0.4, height = 0.1))+
+  labs(title = "\nDuration of last contact by Age breakdown", x = "Age of Client", y = "Duration of last contact (sec)", color = "Term\nDeposit\nPurchased\n")+
+  theme_bw()
+
+```
+
+
+## Modeling - Logistic Regression
+
+This begins the modeling process.  The first model is logistic regression.
+
+```{r bank_model, echo=FALSE}
+## Convert `y` variable to `num`
+bank_full$y=ifelse(bank_full$y=='yes',1,0)
+
+## Data Partition 75/25 Split
+train_var<-createDataPartition(y=bank_full$y, p=0.75, list = FALSE)
+bank_train<-bank_full[train_var,]
+bank_test<-bank_full[-train_var,]
+
+#### Logistic Regression
+bank_model<-glm(y ~ ., family = "binomial", bank_train)
+summary(bank_model)
+
+
+```
+
+```{r graph_auc, echo=FALSE}
+## Model Prediction
+bank_y_predict<- predict(bank_model, bank_test, type='response')
+
+## Generate ROC Curve
+bank_model_AUC<-colAUC(bank_y_predict, bank_test$y, plotROC = T)
+abline(h=bank_model_AUC, col='Green')
+text(.3,.6, cex=.8, labels = paste("Optimal Cutoff:", round(bank_model_AUC,4)))
+```
+
+
+```{r change_to_factor, echo=FALSE}
+## Convert probabilities to Class
+y_class<- ifelse(bank_y_predict > 0.9041, 1, 0)
+
+## Transform back to factors for comparison
+y_class<-factor(y_class)
+bank_test$y<-factor(bank_test$y)
+
+```
+
+
+```{r confusion_matrix, echo=FALSE}
+#Confusion Matrix
+confusionMatrix(y_class, bank_test$y)
+
+```
+
+
+## Modeling - Neural Network
+
+This begins the modeling process.  The first model is Neural Network.
+
+```{r nn_summary, echo=FALSE}
+bank_NNlog<-multinom(y~., data = bank_train)
+summary(bank_NNlog)
+
+
+```
+
+
+```{r}
+bank_y_Predict2<-predict(bank_NNlog, bank_test)
+prediction_table<-table(bank_y_Predict2, bank_test$y)
+prediction_table
+
+
+```
+
+
+```{r}
+# Correct Classification
+sum(diag((prediction_table))/sum(prediction_table))
+
+#Missclassification
+1-sum(diag((prediction_table))/sum(prediction_table))
+```
+
+## Modeling - Decision Tree
+
+This begins the modeling process.  The first model is
+
+```{r}
+
+str(bank_full)
+
+## Change to factor
+bank_full$job<-as.factor(bank_full$job)
+bank_full$marital <-as.factor(bank_full$marital)
+bank_full$education <-as.factor(bank_full$education)
+bank_full$default <-as.factor(bank_full$default)
+bank_full$housing <-as.factor(bank_full$housing)
+bank_full$loan <-as.factor(bank_full$loan)
+bank_full$contact <-as.factor(bank_full$contact)
+bank_full$month <-as.factor(bank_full$month)
+bank_full$poutcome <-as.factor(bank_full$poutcome)
+bank_full$y <-as.factor(bank_full$y)
+
+
+```
+
+
+```{r}
+## Partition data differently
+data.partition<- sample(2,nrow(bank_full), replace = TRUE, prob = c(0.75, 0.25))
+tree_train<-bank_full[data.partition==1,]
+tree_test<-bank_full[data.partition==2,]
+
+## Build decision Tree
+d_tree<-rpart(tree_train$y~tree_train$age + tree_train$job + tree_train$marital +
+                tree_train$education + tree_train$default + tree_train$balance +
+                tree_train$housing + tree_train$loan + tree_train$contact + 
+                tree_train$day + tree_train$month + tree_train$duration + 
+                tree_train$campaign + tree_train$pdays + tree_train$previous +
+                tree_train$poutcome)
+summary(d_tree)
+
+
+```
+
+
+
+```{r}
+## Plot  training decision tree
+rpart.plot(d_tree, extra = 5)
+
+
+```
+
+
+```{r}
+## y prediction
+tree.prediction<-predict(d_tree, tree_train, type="class")
+
+# Check levels
+levels(tree.prediction)
+levels(tree_test$y)
+
+confusionMatrix(tree.prediction, tree_train$y)
+
+
+```
+
+```{r}
+## Test data set
+
+d_test_tree<-rpart(tree_test$y~tree_test$age + tree_test$job + tree_test$marital +
+  tree_test$education + tree_test$default + tree_test$balance + tree_test$housing +
+    tree_test$loan + tree_test$contact + tree_test$day + tree_test$month +
+    tree_test$duration + tree_test$campaign + tree_test$pdays + tree_test$previous+
+    tree_test$poutcome)
+summary(d_test_tree)
+
+
+```
+
+```{r}
+## Plot  training decision tree
+rpart.plot(d_test_tree, extra = 5)
+
+```
+
+```{r}
+## y prediction
+tree_test_prediction<-predict(d_test_tree, tree_test, type="class")
+
+# check levels
+levels(tree_test_prediction)
+levels(tree_test$y)
+
+```
+
+
+```{r}
+## confusion matrix
+confusionMatrix(tree_test_prediction, tree_test$y)
+```
 
