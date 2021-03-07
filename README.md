@@ -1,3 +1,4 @@
 # MIS480_project
 
-# This is a test.
+# Joshua Harris
+# Colorado State University - Global Campus
