@@ -1,10 +1,10 @@
 ---
-title: "mis480_project"
+title: "MIS480 Portfolio Project"
 author: "Joshua Harris"
 date: "3/7/2021"
 output:
-  word_document: default
   html_document: default
+  word_document: default
 ---
 
 ## Step 1: Import libraries and dataset
@@ -36,6 +36,8 @@ library(nnet)
 library(caTools)
 library(dummies)
 library(Amelia)
+
+set.seed(100)
 
 # Set a working directory
 setwd("C:/Users/elksd/Dropbox/My PC (LAPTOP-899T4F9L)/Documents/School Stuff/19 MIS 480/MIS480_Portfolio_Project")
@@ -282,7 +284,7 @@ bank_full %>%
 ```
 
 
-Let's look at marital status.
+Let's look at marital status.  The married clients seem to have more yes responses compared to the other two categories.  However the shift in the age of the graph is interesting.  There is normally distinct line around 60 years of age but the married group goes well into 70s.
 
 ```{r marital_graph, echo=FALSE}
 bank_full %>% 
@@ -307,7 +309,7 @@ bank_full %>%
   
 ```
 
-Default category graph...add more words here regarding the graph or category.
+Default category represents clients with credit in default.  This graph shows a smaller amount of data points in the yes area.   This is likely a good sign being the clients in the yes category are in a bad status with the bank.
 
 
 
@@ -321,7 +323,7 @@ bank_full %>%
 ```
 
 
-housing category graph...
+The housing category shows more yeses in the no side of the graph. It also shows more contacts after the age of 60 compared to the yes side.  This could be due to a perceived lack of dispospable income.
 
 ```{r graph_housing, echo=FALSE}
 bank_full %>% 
@@ -333,7 +335,7 @@ bank_full %>%
 ```
 
 
-loan category graph...
+The loan category is similar to the house category.  There are more yeses on the no side and more contacts after 60.
 
 ```{r graph_loan, echo=FALSE}
 bank_full %>% 
@@ -345,19 +347,19 @@ bank_full %>%
 ```
 
 
-contact category graph
+The contact category shows some interesting patterns.  There are more yeses in cellular.  Both celluar and telephone has more data points above 60 compared to unknown leading me to believe many of these could be a work phone number -- people retire around this time.
 
 ```{r graph_contact, echo=FALSE}
 bank_full %>% 
   ggplot(aes(x = contact, y = age, color=y))+
   geom_point(position = position_jitter(width = 0.45, height = 0.1))+
-  labs(title = "\nClient with a Personal Loan by Age breakdown", x = "Client has a personal loan", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
+  labs(title = "\nType of Contact with Client by Age breakdown", x = "Type of Contact with Client", y = "Age of Client", color = "Term\nDeposit\nPurchased\n")+
   theme_bw()
 
 
 ```
 
-month graph
+The month graph showed a few things.  There are not many contacts done in December probably due to the holidays.  The warmer months appear to have more yeses.
 
 f
 ```{r graph_month, echo=FALSE}
@@ -371,7 +373,7 @@ bank_full %>%
 ```
 
 
-poutcome graph
+The poutcome graph has a lot of yeses in the success category. This variable could be an important factor in future campaigns.  The models will guide us to this conclusion.
 
 ```{r graph_campaign, echo=FALSE}
 bank_full %>% 
@@ -382,7 +384,7 @@ bank_full %>%
 ```
 
 
-How does this look?
+This is the last graph before models are run.  The graph is shifted to display Age on the x-axis and show the duration on the y-axis.  
 
 ```{r graph_duration, echo=FALSE}
 bank_full %>% 
@@ -445,7 +447,7 @@ confusionMatrix(y_class, bank_test$y)
 
 ## Modeling - Neural Network
 
-This begins the modeling process.  The first model is Neural Network.
+This begins the modeling process.  The second model is Neural Network.
 
 ```{r nn_summary, echo=FALSE}
 bank_NNlog<-multinom(y~., data = bank_train)
@@ -455,7 +457,7 @@ summary(bank_NNlog)
 ```
 
 
-```{r}
+```{r prediction_table, echo=FALSE}
 bank_y_Predict2<-predict(bank_NNlog, bank_test)
 prediction_table<-table(bank_y_Predict2, bank_test$y)
 prediction_table
@@ -464,7 +466,7 @@ prediction_table
 ```
 
 
-```{r}
+```{r model_performance, echo=FALSE}
 # Correct Classification
 sum(diag((prediction_table))/sum(prediction_table))
 
@@ -474,9 +476,9 @@ sum(diag((prediction_table))/sum(prediction_table))
 
 ## Modeling - Decision Tree
 
-This begins the modeling process.  The first model is
+This begins the modeling process.  The last model is a decision tree.
 
-```{r}
+```{r convert_to_factor, echo=FALSE}
 
 str(bank_full)
 
@@ -496,7 +498,7 @@ bank_full$y <-as.factor(bank_full$y)
 ```
 
 
-```{r}
+```{r partition_data, echo=FALSE}
 ## Partition data differently
 data.partition<- sample(2,nrow(bank_full), replace = TRUE, prob = c(0.75, 0.25))
 tree_train<-bank_full[data.partition==1,]
@@ -516,7 +518,7 @@ summary(d_tree)
 
 
 
-```{r}
+```{r plot_tree_train, echo=FALSE}
 ## Plot  training decision tree
 rpart.plot(d_tree, extra = 5)
 
@@ -524,7 +526,7 @@ rpart.plot(d_tree, extra = 5)
 ```
 
 
-```{r}
+```{r prediction_tree_table, echo=FALSE}
 ## y prediction
 tree.prediction<-predict(d_tree, tree_train, type="class")
 
@@ -537,7 +539,7 @@ confusionMatrix(tree.prediction, tree_train$y)
 
 ```
 
-```{r}
+```{r test_tree_summary, echo=FALSE}
 ## Test data set
 
 d_test_tree<-rpart(tree_test$y~tree_test$age + tree_test$job + tree_test$marital +
@@ -550,13 +552,13 @@ summary(d_test_tree)
 
 ```
 
-```{r}
-## Plot  training decision tree
+```{r plot_tree_test, echo=FALSE}
+## Plot  test decision tree
 rpart.plot(d_test_tree, extra = 5)
 
 ```
 
-```{r}
+```{r prediction_tree_test, echo=FALSE}
 ## y prediction
 tree_test_prediction<-predict(d_test_tree, tree_test, type="class")
 
@@ -567,7 +569,7 @@ levels(tree_test$y)
 ```
 
 
-```{r}
+```{r confusion_matrix_tree, echo=FALSE}
 ## confusion matrix
 confusionMatrix(tree_test_prediction, tree_test$y)
 ```
